@@ -1,2 +1,48 @@
-[deploy]
-startCommand = "uv run python main.py"
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
+
+BOT_TOKEN = "8680516028:AAEhy24voYD8ty4a6gfjfbOazVUc30NyOYA"
+ADMINS = [6562354897]
+RESTRICTED_TOPICS = []
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    msg = update.message
+    if not msg:
+        return
+    topic_id = msg.message_thread_id
+    user_id = msg.from_user.id
+    if topic_id in RESTRICTED_TOPICS and user_id not in ADMINS:
+        try:
+            await msg.delete()
+        except:
+            pass
+
+async def lock_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMINS:
+        await update.message.reply_text("❌ You can't use this command.")
+        return
+    topic_id = update.message.message_thread_id
+    if topic_id not in RESTRICTED_TOPICS:
+        RESTRICTED_TOPICS.append(topic_id)
+        await update.message.reply_text(f"🔒 Topic locked! (ID: {topic_id})")
+    else:
+        await update.message.reply_text("⚠️ Topic already locked.")
+
+async def unlock_topic(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id not in ADMINS:
+        await update.message.reply_text("❌ You can't use this command.")
+        return
+    topic_id = update.message.message_thread_id
+    if topic_id in RESTRICTED_TOPICS:
+        RESTRICTED_TOPICS.remove(topic_id)
+        await update.message.reply_text(f"🔓 Topic unlocked! (ID: {topic_id})")
+    else:
+        await update.message.reply_text("⚠️ Topic is not locked.")
+
+app = ApplicationBuilder().token(BOT_TOKEN).build()
+app.add_handler(MessageHandler(filters.ALL, handle_message))
+app.add_handler(CommandHandler("locktopic", lock_topic))
+app.add_handler(CommandHandler("unlocktopic", unlock_topic))
+
+print("Bot running...")
+app.run_polling()
